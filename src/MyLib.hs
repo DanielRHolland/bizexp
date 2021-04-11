@@ -60,12 +60,7 @@ parseLevel = go "" (Just [])
       go (prev ++ [x]) l xs
 
 evalAst :: Ast -> Maybe Value
-evalAst (Expr name ast) =
-  case evalLevel ast of
-    Nothing -> Nothing
-    Just vals -> case getFunc name of
-      Nothing -> Nothing
-      Just f -> f vals
+evalAst (Expr name ast) = fromMaybe Nothing (getFunc name <*> evalLevel ast)
 evalAst (Val val) = Just val
 
 evalLevel :: [Ast] -> Maybe [Value]
@@ -81,11 +76,10 @@ funcs0 = [("sum",(eSum, 0))]
 
 eSum :: [Value] -> Maybe Value
 eSum [] = Just $ IntVal 0
-eSum (x:xs) = case coerceToInt x of
-  Nothing -> Nothing
-  Just a0 ->
+eSum (x:xs) = 
     let
-      Just (IntVal a1) = eSum xs
+      a1 = coerceToInt =<< eSum xs
+      a0 = coerceToInt x
     in
-      Just $ IntVal (a0 + a1)
+      IntVal <$> ((+) <$> a1 <*> a0)
 
