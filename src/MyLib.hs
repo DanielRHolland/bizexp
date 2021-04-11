@@ -16,12 +16,24 @@ eval :: String -> Maybe Integer
 eval x = coerceToInt =<< evalAst.head.fst =<< parseLevel x
 
 
-data Value = IntVal Integer | StrVal String
+data Value = IntVal Integer | StrVal String | BoolVal Bool
   deriving (Show)
+
+class CoerceTo a where
+  coerceTo :: Value -> Maybe a
 
 coerceToInt :: Value -> Maybe Integer
 coerceToInt (IntVal n) = Just n
 coerceToInt (StrVal s) = readMaybe s
+coerceToInt (BoolVal True) = Just 1
+coerceToInt (BoolVal False) = Just 0
+
+coerceToBool :: Value -> Maybe Bool
+coerceToBool (IntVal v) = Just $ v /= 0
+coerceToBool (StrVal "True") = Just True
+coerceToBool (StrVal "true") = Just True
+coerceToBool (BoolVal v) = Just v
+coerceToBool _ = Just False
 
 type Name = String
 
@@ -68,11 +80,9 @@ evalLevel = mapM evalAst
 
 
 getFunc :: String -> Maybe ([Value] -> Maybe Value)
-getFunc _ = Just eSum
-
-
--- (name, (func, minParams))
-funcs0 = [("sum",(eSum, 0))]
+getFunc "sum" = Just eSum
+getFunc "any" = Just eAny
+getFunc _ = Nothing
 
 eSum :: [Value] -> Maybe Value
 eSum [] = Just $ IntVal 0
@@ -82,4 +92,13 @@ eSum (x:xs) =
       a0 = coerceToInt x
     in
       IntVal <$> ((+) <$> a1 <*> a0)
+
+eAny :: [Value] -> Maybe Value
+eAny [] = Just $ BoolVal False
+eAny (x:xs) =
+    let
+      a1 = coerceToBool =<< eAny xs
+      a0 = coerceToBool x
+    in
+      BoolVal <$> ((||) <$> a1 <*> a0)
 
