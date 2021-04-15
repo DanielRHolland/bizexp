@@ -22,7 +22,7 @@ maintainer:         me@danrh.co.uk
 extra-source-files: CHANGELOG.md
 
 library
-    exposed-modules:  MyLib
+    exposed-modules:  BizExpr
 
     -- Modules included in this library but not exported.
     -- other-modules:
