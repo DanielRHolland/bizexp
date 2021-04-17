@@ -22,14 +22,22 @@ maintainer:         me@danrh.co.uk
 extra-source-files: CHANGELOG.md
 
 library
-    exposed-modules:  BizExpr
+    exposed-modules: RestService 
 
     -- Modules included in this library but not exported.
-    -- other-modules:
+    other-modules: BizExpr
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
-    build-depends:    base ^>=4.14.1.0
+    build-depends:    base ^>=4.14.1.0,
+                      text,
+                      wai,
+                      http-types,
+                      warp,
+                      aeson,
+                      scotty,
+                      containers,
+                      stm
     hs-source-dirs:   src
     default-language: Haskell2010
 

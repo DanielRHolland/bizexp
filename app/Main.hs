@@ -1,6 +1,6 @@
 module Main where
 
-import qualified BizExpr (eval, repl)
+import qualified RestService (start)
 
 main :: IO ()
-main = BizExpr.repl
+main = RestService.start

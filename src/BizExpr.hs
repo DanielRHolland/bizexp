@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleInstances #-}
+
 module BizExpr (repl, eval) where
 
 import Data.Maybe (fromMaybe)
@@ -6,9 +8,9 @@ import Text.Read (readMaybe)
 --import Data.Text as T
 
 repl :: IO ()
-repl = getLine >>= putStrLn . maybe "Failed to evaluate expression" show . eval >> repl
+repl = getLine >>= putStrLn . maybe "Failed to evaluate expression" show . (eval :: String -> Maybe Integer) >> repl
 
-eval :: String -> Maybe Integer
+eval :: CoerceTo a => String -> Maybe a
 eval x = coerceTo =<< evalAst . head . fst =<< parseLevel x
 
 data Value = IntVal Integer | StrVal String | BoolVal Bool
@@ -26,12 +28,18 @@ instance CoerceTo Integer where
 
   coerceFrom = IntVal
 
+instance CoerceTo String where
+  coerceTo (BoolVal v) = Just $ show v
+  coerceTo (IntVal v) = Just $ show v
+  coerceTo (StrVal v) = Just v
+  coerceFrom = StrVal
+
 instance CoerceTo Bool where
+  coerceTo (BoolVal v) = Just v
   coerceTo (IntVal v) = Just $ v /= 0
   coerceTo (StrVal "True") = Just True
   coerceTo (StrVal "true") = Just True
-  coerceTo (BoolVal v) = Just v
-  coerceTo _ = Just False
+  coerceTo v = coerceTo . IntVal =<< coerceTo v
 
   coerceFrom = BoolVal
 
@@ -46,12 +54,16 @@ parseLevel :: String -> Maybe ([Ast], String)
 parseLevel = go "" (Just [])
   where
     go :: String -> Maybe [Ast] -> String -> Maybe ([Ast], String)
-    go prev (Just l) ('(' : next) = case parseLevel next of
-      Nothing ->
-        Nothing
-      Just (arg, remnant) ->
-        let r = if remnant /= "" && head remnant == ',' then tail remnant else remnant
-         in go "" (Just (l ++ [Expr prev arg])) r
+    go prev (Just l) ('(' : next) =
+      case parseLevel next of
+        Nothing ->
+          Nothing
+        Just (arg, remnant) ->
+          let r =
+                if remnant /= "" && head remnant == ','
+                  then tail remnant
+                  else remnant
+           in go "" (Just (l ++ [Expr prev arg])) r
     go prev (Just l) (')' : remnant) =
       let l0 = [Val $ StrVal prev | prev /= ""]
        in Just (l ++ l0, remnant)
