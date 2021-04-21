@@ -1,19 +1,23 @@
 {-# LANGUAGE FlexibleInstances #-}
 
-module BizExpr (repl, eval) where
+module BizExpr (repl, eval, Context) where
 
 import Data.Maybe (fromMaybe)
 import Text.Read (readMaybe)
+import qualified Data.Text.Lazy as L
+import qualified Data.Map as M
 
+
+type Context = M.Map L.Text L.Text
 --import Data.Text as T
 
 repl :: IO ()
-repl = getLine >>= putStrLn . maybe "Failed to evaluate expression" show . (eval :: String -> Maybe Integer) >> repl
+repl = getLine >>= putStrLn . maybe "Failed to evaluate expression" show . (eval M.empty :: String -> Maybe Integer) >> repl
 
-eval :: CoerceTo a => String -> Maybe a
-eval x = coerceTo =<< evalAst . head . fst =<< parseLevel x
+eval :: CoerceTo a => Context -> String -> Maybe a
+eval c x = coerceTo =<< evalAst . head . fst =<< parseLevel c x
 
-data Value = IntVal Integer | StrVal String | BoolVal Bool
+data Value = IntVal Integer | StrVal String | BoolVal Bool | FloatVal Float
   deriving (Show)
 
 class CoerceTo a where
@@ -21,17 +25,25 @@ class CoerceTo a where
   coerceFrom :: a -> Value
 
 instance CoerceTo Integer where
+  coerceTo (FloatVal n) = Just $ floor n
   coerceTo (IntVal n) = Just n
+  coerceTo v = coerceTo . FloatVal =<< coerceTo v
+  coerceFrom = IntVal
+
+instance CoerceTo Float where
+  coerceTo (FloatVal n) = Just n
+  coerceTo (IntVal n) = Just $ fromIntegral n
   coerceTo (StrVal s) = readMaybe s
   coerceTo (BoolVal True) = Just 1
   coerceTo (BoolVal False) = Just 0
 
-  coerceFrom = IntVal
+  coerceFrom = FloatVal
 
 instance CoerceTo String where
   coerceTo (BoolVal v) = Just $ show v
   coerceTo (IntVal v) = Just $ show v
   coerceTo (StrVal v) = Just v
+  coerceTo (FloatVal v) = Just $ show v
   coerceFrom = StrVal
 
 instance CoerceTo Bool where
@@ -50,12 +62,12 @@ data Ast
   | Val Value
   deriving (Show)
 
-parseLevel :: String -> Maybe ([Ast], String)
-parseLevel = go "" (Just [])
+parseLevel :: Context -> String -> Maybe ([Ast], String)
+parseLevel c = go "" (Just [])
   where
     go :: String -> Maybe [Ast] -> String -> Maybe ([Ast], String)
     go prev (Just l) ('(' : next) =
-      case parseLevel next of
+      case parseLevel c next of
         Nothing ->
           Nothing
         Just (arg, remnant) ->
@@ -65,17 +77,22 @@ parseLevel = go "" (Just [])
                   else remnant
            in go "" (Just (l ++ [Expr prev arg])) r
     go prev (Just l) (')' : remnant) =
-      let l0 = [Val $ StrVal prev | prev /= ""]
+      let l0 = [Val $ newVal c prev | prev /= ""]
        in Just (l ++ l0, remnant)
     go prev (Just l) (',' : next) =
-      let l0 = [Val $ StrVal prev]
+      let l0 = [Val $ newVal c prev]
        in go "" (Just (l ++ l0)) next
     go "" (Just l) "" =
       Just (l, "")
     go prev (Just l) "" =
-      Just (l ++ [Val $ StrVal prev], "")
+      Just (l ++ [Val $ newVal c prev], "")
     go prev l (x : xs) =
       go (prev ++ [x]) l xs
+
+newVal :: Context -> String -> Value
+newVal c x = case M.lookup (L.pack x) c of
+  Nothing -> StrVal x
+  Just n -> StrVal $ L.unpack n
 
 evalAst :: Ast -> Maybe Value
 evalAst (Expr name ast) = fromMaybe Nothing (getFunc name <*> evalLevel ast)
@@ -88,16 +105,23 @@ getFunc :: String -> Maybe ([Value] -> Maybe Value)
 getFunc "sum" = Just eSum
 getFunc "any" = Just eAny
 getFunc "all" = Just eAll
+getFunc "average" = Just eAverage
 getFunc _ = Nothing
 
 eSum :: [Value] -> Maybe Value
-eSum = eFold (+) (0 :: Integer)
+eSum = eFold (+) (0.0 :: Float)
 
 eAny :: [Value] -> Maybe Value
 eAny = eFold (||) False
 
 eAll :: [Value] -> Maybe Value
 eAll = eFold (&&) True
+
+eAverage :: [Value] -> Maybe Value
+eAverage xs = do
+  let n = coerceTo =<< eSum xs
+      d = Just . fromIntegral $ length xs
+   in FloatVal <$> ((/) <$> n <*> d)
 
 eFold :: (CoerceTo a, CoerceTo b) => (b -> a -> b) -> b -> [Value] -> Maybe Value
 eFold fn init [] = Just $ coerceFrom init

@@ -31,13 +31,7 @@ instance CoerceTo Bool where
   coerceTo (IntVal v) = Just $ v /= 0
   coerceTo (StrVal "True") = Just True
   coerceTo (StrVal "true") = Just True
-  --coerceTo v@(StrVal _) = coerceTo . IntVal =<< (coerceTo v :: Maybe Integer) :: Maybe Bool
-  coerceTo v@(StrVal x) = case (readMaybe x :: Maybe Integer) of
-      Nothing -> Just False
-      Just n -> Just $ True--n /= 0
---    case coerceTo v :: Maybe Integer of
---      Nothing -> Just False
---      Just n -> coerceTo (IntVal n)
+  coerceTo v = coerceTo . IntVal =<< (coerceTo v :: Maybe Integer) :: Maybe Bool
 
   coerceFrom = BoolVal
 
