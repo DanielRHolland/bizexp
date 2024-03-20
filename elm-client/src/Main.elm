@@ -72,7 +72,7 @@ subscriptions model =
 getTable : Cmd Msg
 getTable =
     Http.get
-        { url = serverUrl ++ "/t/dummy"
+        { url = serverUrl ++ "/t/-1/e/sum(age,height)"
         , expect = Http.expectJson GotResp decTable
         }
 
