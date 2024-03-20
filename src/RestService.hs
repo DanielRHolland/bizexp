@@ -58,6 +58,16 @@ getTable s n = atomically $ IM.lookup n <$> readTVar s
 setTable :: State -> Int -> Table -> IO (Maybe Table)
 setTable s n t = atomically $ (\x -> writeTVar s x >> return (Just t)) . IM.insert n t =<< readTVar s
 
+insertRow :: State -> Int -> TableRow -> IO (Maybe Table)
+insertRow s n row = atomically $ do
+  tables <- readTVar s
+  case IM.lookup n tables of
+    Nothing -> return Nothing
+    Just table ->
+      let updatedTable = addRow table row
+          updatedTables = IM.insert n updatedTable tables
+       in writeTVar s updatedTables >> return (Just updatedTable)
+
 routes :: State -> ScottyM ()
 routes state = do
   S.middleware addHeaders
@@ -66,9 +76,18 @@ routes state = do
     S.json $ evalTableExpressions (TableExpressions dummyTable ["sum(2,3,5)", "any(0,0,1)", "sum(age, -10)", "any(0,1)"])
   get "/t/:id" $
     S.json =<< liftAndCatchIO . getTable state =<< S.param "id"
+  get "/t/:id/e/:e" $ do
+    id <- S.param "id"
+    ex <- S.param "e"
+    S.json
+      . fmap (evalTableExpressions . flip TableExpressions [ex])
+      =<< liftAndCatchIO (getTable state id)
   post "/t/:id" $ do
     id <- S.param "id"
     S.json =<< liftAndCatchIO . setTable state id =<< S.jsonData
+  post "/t/:id/row" $ do
+    id <- S.param "id"
+    S.json =<< liftAndCatchIO . insertRow state id =<< S.jsonData
   get "/:expr" $
     S.text =<< S.param "expr"
   post "/eval" $
@@ -131,19 +150,22 @@ dummyTable =
     { table_name = "dummy table",
       table_headings = ["name", "age", "height"],
       table_rows =
-        [ M.fromList
-            [ ("name", "alice"),
-              ("age", "30")
-            ],
+        map
           M.fromList
+          [ [ ("name", "alice"),
+              ("age", "30"),
+              ("height", "1.60")
+            ],
             [ ("name", "bob"),
               ("age", "40")
             ],
-          M.fromList
             [ ("name", "charles"),
               ("height", "1.80")
+            ],
+            [ ("age", "30"),
+              ("height", "1.60")
             ]
-        ]
+          ]
     }
 
 addRow :: Table -> TableRow -> Table
