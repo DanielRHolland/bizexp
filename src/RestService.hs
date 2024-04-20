@@ -33,15 +33,6 @@ addHeaders =
         )
     )
 
-staticFilePaths :: [FilePath]
-staticFilePaths = map ("./static/" ++) ["materialize.min.css", "materialize.min.js", "service.js"]
-
-staticFiles :: ScottyM ()
-staticFiles = do
-  mapM_ addFile staticFilePaths
-  where
-    addFile path = get (capture $ tail path) $ file path
-
 data ExprReq = ExprReq {expression :: L.Text, result :: Maybe L.Text}
   deriving (Show, Generic)
 
@@ -71,7 +62,7 @@ insertRow s n row = atomically $ do
 routes :: State -> ScottyM ()
 routes state = do
   S.middleware addHeaders
-  staticFiles
+  get "/" $ file "./elm-client/index.html"
   get "/t/dummy" $
     S.json $ evalTableExpressions (TableExpressions dummyTable ["sum(2,3,5)", "any(0,0,1)", "sum(age, -10)", "any(0,1)"])
   get "/t/:id" $
