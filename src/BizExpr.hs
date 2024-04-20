@@ -6,13 +6,21 @@ import Data.Maybe (fromMaybe)
 import Text.Read (readMaybe)
 import qualified Data.Text.Lazy as L
 import qualified Data.Map as M
-
+import System.IO (isEOF)
+import Control.Monad (when)
 
 type Context = M.Map L.Text L.Text
---import Data.Text as T
 
 repl :: IO ()
-repl = getLine >>= putStrLn . maybe "Failed to evaluate expression" id . (eval M.empty :: String -> Maybe String) >> repl
+repl = do
+  eof <- isEOF
+  when (not eof) (
+      getLine >>=
+        putStrLn
+        . maybe "Failed to evaluate expression" id
+        . (eval M.empty :: String -> Maybe String)
+      >> repl
+    )
 
 maybeHead (x:_) = Just x
 maybeHead _ = Nothing
