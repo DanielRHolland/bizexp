@@ -75,21 +75,21 @@ routes state = do
   get "/t/dummy" $
     S.json $ evalTableExpressions (TableExpressions dummyTable ["sum(2,3,5)", "any(0,0,1)", "sum(age, -10)", "any(0,1)"])
   get "/t/:id" $
-    S.json =<< liftAndCatchIO . getTable state =<< S.param "id"
+    S.json =<< liftIO . getTable state =<< S.pathParam "id"
   get "/t/:id/e/:e" $ do
-    id <- S.param "id"
-    ex <- S.param "e"
+    id <- S.pathParam "id"
+    ex <- S.pathParam "e"
     S.json
       . fmap (evalTableExpressions . flip TableExpressions [ex])
-      =<< liftAndCatchIO (getTable state id)
+      =<< liftIO (getTable state id)
   post "/t/:id" $ do
-    id <- S.param "id"
-    S.json =<< liftAndCatchIO . setTable state id =<< S.jsonData
+    id <- S.pathParam "id"
+    S.json =<< liftIO . setTable state id =<< S.jsonData
   post "/t/:id/row" $ do
-    id <- S.param "id"
-    S.json =<< liftAndCatchIO . insertRow state id =<< S.jsonData
+    id <- S.pathParam "id"
+    S.json =<< liftIO . insertRow state id =<< S.jsonData
   get "/:expr" $
-    S.text =<< S.param "expr"
+    S.text =<< S.pathParam "expr"
   post "/eval" $
     S.json . (ExprReq <*> eval M.empty) . expression =<< S.jsonData
 
