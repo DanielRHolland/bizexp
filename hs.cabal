@@ -1,6 +1,6 @@
-cabal-version:      2.4
+cabal-version:      3.4
 name:               hs
-version:            0.1.0.0
+version:            0.2.0.0
 
 -- A short (one-line) description of the package.
 -- synopsis:
@@ -16,6 +16,8 @@ version:            0.1.0.0
 author:             dan
 maintainer:         me@danrh.co.uk
 
+build-type:         Simple
+
 -- A copyright notice.
 -- copyright:
 -- category:
@@ -29,7 +31,7 @@ library
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
-    build-depends:    base ^>=4.14.1.0,
+    build-depends:    base ^>=4.19.1.0,
                       text,
                       wai,
                       http-types,
@@ -50,7 +52,7 @@ executable hs
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
     build-depends:
-        base ^>=4.14.1.0,
+        base ^>=4.19.1.0,
         hs
 
     hs-source-dirs:   app
