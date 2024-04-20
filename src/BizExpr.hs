@@ -12,10 +12,13 @@ type Context = M.Map L.Text L.Text
 --import Data.Text as T
 
 repl :: IO ()
-repl = getLine >>= putStrLn . maybe "Failed to evaluate expression" show . (eval M.empty :: String -> Maybe Integer) >> repl
+repl = getLine >>= putStrLn . maybe "Failed to evaluate expression" id . (eval M.empty :: String -> Maybe String) >> repl
+
+maybeHead (x:_) = Just x
+maybeHead _ = Nothing
 
 eval :: CoerceTo a => Context -> String -> Maybe a
-eval c x = coerceTo =<< evalAst . head . fst =<< parseLevel c x
+eval c x = coerceTo =<< evalAst =<< maybeHead . fst =<< parseLevel c x
 
 data Value = IntVal Integer | StrVal String | BoolVal Bool | FloatVal Float
   deriving (Show)
@@ -82,6 +85,8 @@ parseLevel c = go "" (Just [])
     go prev (Just l) (',' : next) =
       let l0 = [Val $ newVal c prev]
        in go "" (Just (l ++ l0)) next
+    go prev l (' ' : next) =
+      go "" l next
     go "" (Just l) "" =
       Just (l, "")
     go prev (Just l) "" =
