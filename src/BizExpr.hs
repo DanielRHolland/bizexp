@@ -119,7 +119,15 @@ getFunc "sum" = Just eSum
 getFunc "any" = Just eAny
 getFunc "all" = Just eAll
 getFunc "average" = Just eAverage
+getFunc "floor" = Just eFloor
+getFunc "not" = Just eNot
 getFunc _ = Nothing
+
+eFloor :: [Value] -> Maybe Value
+eFloor (v:_) = IntVal <$> (floor <$> (coerceTo v :: Maybe Float))
+
+eNot :: [Value] -> Maybe Value
+eNot (v:_) = BoolVal <$> (not <$> coerceTo v)
 
 eSum :: [Value] -> Maybe Value
 eSum = eFold (+) (0.0 :: Float)
