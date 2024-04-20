@@ -82,6 +82,12 @@ routes state = do
     S.json
       . fmap (evalTableExpressions . flip TableExpressions [ex])
       =<< liftIO (getTable state id)
+  post "/t/:id/e" $ do
+    id <- S.pathParam "id"
+    exs <- S.jsonData
+    S.json
+      . fmap (evalTableExpressions . flip TableExpressions exs)
+      =<< liftIO (getTable state id)
   post "/t/:id" $ do
     id <- S.pathParam "id"
     S.json =<< liftIO . setTable state id =<< S.jsonData
@@ -89,7 +95,11 @@ routes state = do
     id <- S.pathParam "id"
     S.json =<< liftIO . insertRow state id =<< S.jsonData
   get "/:expr" $
-    S.text =<< S.pathParam "expr"
+    S.text
+      . (fromMaybe "")
+      . result
+      . (ExprReq <*> eval M.empty)
+      =<< S.pathParam "expr"
   post "/eval" $
     S.json . (ExprReq <*> eval M.empty) . expression =<< S.jsonData
 
